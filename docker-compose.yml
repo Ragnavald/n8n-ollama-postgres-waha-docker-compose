@@ -1,0 +1,80 @@
+version: "3.9"
+
+networks:
+  workflow:
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./docker/ollama/:/root/.ollama
+    command: "serve"
+    restart: unless-stopped
+    networks:
+      - workflow
+
+  redis:
+    image: redis:latest
+    platform: linux/amd64
+    command: redis-server --requirepass default
+    environment:
+      REDIS_USER: default
+      REDIS_PASSWORD: default
+    ports:
+      - "6379:6379"
+    networks:
+      - workflow
+
+  postgres:
+    image: postgres:latest
+    platform: linux/amd64
+    environment:
+      POSTGRES_USER: default
+      POSTGRES_PASSWORD: default
+      POSTGRES_DB: default
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./docker/postgres/:/var/lib/postgresql/data
+    networks:
+      - workflow
+
+  n8n:
+    image: n8nio/n8n:latest
+    platform: linux/amd64
+    environment:
+      N8N_HOST: n8n
+      N8N_PORT: 5678
+      GENERIC_TIMEZONE: America/Sao_Paulo
+      N8N_LOG_LEVEL: debug
+      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: true
+    volumes:
+      - ./docker/n8n/:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    networks:
+      - workflow
+
+  waha:
+    image: devlikeapro/waha:latest
+    platform: linux/amd64
+    environment:
+      WHATSAPP_HOOK_URL: http://n8n:5678/webhook/webhook
+      WHATSAPP_DEFAULT_ENGINE: GOWS
+      WHATSAPP_HOOK_EVENTS: message
+    volumes:
+      - ./docker/waha/waha_sessions:/app/.sessions
+      - ./docker/waha/waha_media:/app/.media
+    ports:
+      - "3000:3000"
+    networks:
+      - workflow
+
+volumes:
+  pgdata:
+  waha_sessions:
+  waha_media:
+  n8n_data:
